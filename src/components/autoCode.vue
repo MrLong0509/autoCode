@@ -1,5 +1,6 @@
 <template>
     <div class="card">
+        <div class="Renderings"></div>
         <div class="notification">
             <div class="notiglow"></div>
             <div class="notiborderglow"></div>
@@ -62,162 +63,16 @@ const setChildHierarchyID = async (view: IGridView, hierarchyCode: string, recor
 </script>
 
 <style scoped>
-/* Yoinked from CodePen, but improved the animation
-so that it is smooth among other more minor things */
+@import "../button.css";
+@import "../notion.css";
 
-.codepen-button {
-    display: block;
-    cursor: pointer;
-    color: white;
-    margin: 0 auto;
-    position: relative;
-    text-decoration: none;
-    font-weight: 600;
-    border-radius: 6px;
-    overflow: hidden;
-    padding: 3px;
-    isolation: isolate;
-}
-
-.codepen-button::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 400%;
-    height: 100%;
-    background: linear-gradient(115deg, #4fcf70, #fad648, #a767e5, #12bcfe, #44ce7b);
-    background-size: 25% 100%;
-    animation: an-at-keyframe-css-at-rule-that-translates-via-the-transform-property-the-background-by-negative-25-percent-of-its-width-so-that-it-gives-a-nice-border-animation_-We-use-the-translate-property-to-have-a-nice-transition-so-it_s-not-a-jerk-of-a-start-or-stop
-        0.75s linear infinite;
-    animation-play-state: paused;
-    translate: -5% 0%;
-    transition: translate 0.25s ease-out;
-}
-
-.codepen-button:hover::before {
-    animation-play-state: running;
-    transition-duration: 0.75s;
-    translate: 0% 0%;
-}
-
-@keyframes an-at-keyframe-css-at-rule-that-translates-via-the-transform-property-the-background-by-negative-25-percent-of-its-width-so-that-it-gives-a-nice-border-animation_-We-use-the-translate-property-to-have-a-nice-transition-so-it_s-not-a-jerk-of-a-start-or-stop {
-    to {
-        transform: translateX(-25%);
-    }
-}
-
-.codepen-button span {
-    position: relative;
-    display: block;
-    padding: 1rem 1.5rem;
-    font-size: 1.1rem;
-    background: #000;
-    border-radius: 3px;
-    height: 100%;
-}
-
-.notification {
-    display: flex;
-    flex-direction: column;
-    isolation: isolate;
-    position: relative;
-    width: 16rem;
-    height: 14rem;
-    background: #29292c;
-    border-radius: 1rem;
-    overflow: hidden;
-    font-family: "Gill Sans", "Gill Sans MT", Calibri, "Trebuchet MS", sans-serif;
-    font-size: 16px;
-    --gradient: linear-gradient(to bottom, #2eadff, #3d83ff, #7e61ff);
-    --color: #32a6ff;
-}
-
-.notification:before {
-    position: absolute;
-    content: "";
-    inset: 0.0625rem;
-    border-radius: 0.9375rem;
-    background: #18181b;
-    z-index: 2;
-}
-
-.notification:after {
-    position: absolute;
-    content: "";
-    width: 0.25rem;
-    inset: 0.65rem auto 0.65rem 0.5rem;
-    border-radius: 0.125rem;
-    background: var(--gradient);
-    transition: transform 300ms ease;
-    z-index: 4;
-}
-
-.notification:hover:after {
-    transform: translateX(0.15rem);
-}
-
-.notititle {
-    color: var(--color);
-    padding: 0.65rem 0.25rem 0.4rem 1.25rem;
-    font-weight: bolder;
-    font-size: 1.1rem;
-    transition: transform 300ms ease;
-    z-index: 5;
-}
-
-.notification:hover .notititle {
-    transform: translateX(0.15rem);
-}
-
-.notibody {
-    color: #99999d;
-    padding: 0 1.25rem;
-    font-weight: bolder;
-    transition: transform 300ms ease;
-    z-index: 5;
-}
-
-.notification:hover .notibody {
-    transform: translateX(0.25rem);
-}
-
-.notiglow,
-.notiborderglow {
-    position: absolute;
-    width: 20rem;
-    height: 20rem;
-    transform: translate(-50%, -50%);
-    background: radial-gradient(circle closest-side at center, white, transparent);
-    opacity: 0;
-    transition: opacity 300ms ease;
-}
-
-.notiglow {
-    z-index: 3;
-}
-
-.notiborderglow {
-    z-index: 1;
-}
-
-.notification:hover .notiglow {
-    opacity: 0.1;
-}
-
-.notification:hover .notiborderglow {
-    opacity: 0.1;
-}
-
-.note {
-    color: var(--color);
-    position: fixed;
-    top: 80%;
-    left: 50%;
-    transform: translateX(-50%);
-    text-align: center;
-    font-size: 0.9rem;
-    width: 75%;
+.Renderings {
+    background-image: url("/public/效果图.png");
+    background-size: cover; /* 背景图的适应方式 */
+    height: 14em; /* 设置div的高度以展示背景图 */
+    width: 25em; /* 设置div的宽度以适应屏幕 */
+    border: 2px solid #333333; /* 设置边框样式 */
+    border-radius: 10px; /* 设置圆角边框 */
 }
 </style>
 async
