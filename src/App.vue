@@ -20,4 +20,3 @@ import autoCode from "./components/autoCode element.vue";
     filter: drop-shadow(0 0 2em #42b883aa);
 }
 </style>
-./components/autoCode.vue ./components/autoCode.UIbulider.vue
