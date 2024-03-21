@@ -8,7 +8,7 @@
             />
         </el-row>
         <el-row :gutter="30">
-            <el-card style="max-width: 480px">
+            <el-card style="max-width: 40em">
                 <p v-for="(k, i) in tipsArr" :key="k" class="text item">{{ i + 1 + ". " + k }}</p>
             </el-card>
         </el-row>
@@ -32,7 +32,7 @@ let tipsArr = [
     "本工具自动完成多层级记录的顺序编码;",
     "需要有一列名为“层级编码”的文本字段;",
     "先在最顶层(无子记录的数据)的《层级编码》字段中编码,如:“1,2,3,4或者A,B,C,D”;",
-    "不可以带标点符号；",
+    "编写最顶层编码的时候不可以带标点符号；",
     "工具自动完成子记录的顺序编码,如:1.1.1.1。",
 ];
 
