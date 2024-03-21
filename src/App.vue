@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import autoCode from "./components/autoCode.vue";
+import autoCode from "./components/autoCode element.vue";
 </script>
 
 <template>
@@ -20,4 +20,4 @@ import autoCode from "./components/autoCode.vue";
     filter: drop-shadow(0 0 2em #42b883aa);
 }
 </style>
-./components/autoCode.vue
+./components/autoCode.vue ./components/autoCode.UIbulider.vue
