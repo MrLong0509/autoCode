@@ -26,7 +26,7 @@ let view: IGridView | null = null;
 let recordIdList: (string | undefined)[] | null = null;
 let hierarchyCodeField: ITextField | null = null;
 
-let image = "/public/效果图.png";
+let image = "/效果图.png";
 let fit = "cover";
 let tipsArr = [
     "本工具自动完成多层级记录的顺序编码;",
