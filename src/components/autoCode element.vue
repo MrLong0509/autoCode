@@ -3,8 +3,8 @@
         <el-row :gutter="30">
             <el-image
                 style="height: 10em; width: 25em; border: 2px solid #333333; border-radius: 10px"
-                :src="image"
-                :fit="fit"
+                fit="cover"
+                src="/效果图.png"
             />
         </el-row>
         <el-row :gutter="30">
@@ -26,8 +26,6 @@ let view: IGridView | null = null;
 let recordIdList: (string | undefined)[] | null = null;
 let hierarchyCodeField: ITextField | null = null;
 
-let image = "/效果图.png";
-let fit = "cover";
 let tipsArr = [
     "本工具自动完成多层级记录的顺序编码;",
     "需要有一列名为“层级编码”的文本字段;",
