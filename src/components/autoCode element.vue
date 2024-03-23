@@ -92,18 +92,13 @@ const setupChildArr = async (view: IGridView, recordID: string) => {
 };
 
 const setHierarchyID = async () => {
-    if (recordIdList && view && hierarchyCodeField) {
-        let index = 1;
-        let hierarchyCode = "";
+    if (view && hierarchyCodeField) {
+        for (let i = 0; i < parentArr.length; i++) {
+            const recordID = parentArr[i];
+            let hierarchyCode = (i + 1).toString();
 
-        for (let i = 0; i < recordIdList.length; i++) {
-            const recordID = recordIdList[i];
-
-            if (recordID && parentArr.includes(recordID)) {
-                hierarchyCode = (index++).toString();
-                hierarchyCodeField.setValue(recordID as string, hierarchyCode);
-                await setChildHierarchyID(view, hierarchyCode, recordID);
-            }
+            hierarchyCodeField.setValue(recordID, hierarchyCode);
+            await setChildHierarchyID(view, hierarchyCode, recordID);
         }
     }
 };
@@ -114,7 +109,6 @@ const setChildHierarchyID = async (view: IGridView, hierarchyCode: string, recor
     if (childRecordIdArr) {
         for (let i = 0; i < childRecordIdArr.length; i++) {
             let childRecordID = childRecordIdArr[i];
-            childArr.push(childRecordID);
 
             let childHierarchyCode = hierarchyCode + "." + (i + 1);
 
