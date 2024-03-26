@@ -16,26 +16,45 @@
             <el-button
                 v-loading.fullscreen.lock="fullscreenLoading"
                 type="primary"
-                @click="onclick"
+                @click="onAutoCode"
                 size="large"
                 color="#1456f0"
             >
                 开始编码
+            </el-button>
+            <el-button
+                v-loading.fullscreen.lock="fullscreenLoading"
+                type="primary"
+                @click="onAutoCopy"
+                size="large"
+                color="#1456f0"
+            >
+                复制选中记录
             </el-button>
         </el-row>
     </div>
 </template>
 
 <script setup lang="ts">
-import { bitable, ITextField, IGridView } from "@lark-base-open/js-sdk";
-import { ref } from "vue";
+import {
+    bitable,
+    ITable,
+    ITextField,
+    IGridView,
+    ISingleLinkField,
+    IRecordValue,
+    FieldType,
+} from "@lark-base-open/js-sdk";
+import { ref, onMounted } from "vue";
 
 const fullscreenLoading = ref(false);
 
-let table = null;
+let table: ITable | null = null;
 let view: IGridView | null = null;
 let recordIdList: (string | undefined)[] | null = null;
+let selectedRecordIdList: (string | undefined)[] | null = null;
 let hierarchyCodeField: ITextField | null = null;
+let parentField: ISingleLinkField | null = null;
 let childArr: string[] = [];
 let parentArr: string[] = [];
 
@@ -45,15 +64,17 @@ let tipsArr = [
     "工具自动完成子记录的顺序编码,如:1.1.1.1。",
 ];
 
-const onclick = async () => {
-    //开始Loading
-    fullscreenLoading.value = true;
-
+onMounted(async () => {
     //获取初始化数据
     table = await bitable.base.getActiveTable();
     view = (await table.getActiveView()) as IGridView;
-    recordIdList = await view.getVisibleRecordIdList();
     hierarchyCodeField = await table.getField<ITextField>("层级编码");
+    parentField = await table.getField<ISingleLinkField>("父记录");
+});
+
+const onAutoCode = async () => {
+    //开始Loading
+    fullscreenLoading.value = true;
 
     //初始化层级数组
     await setupParentArr();
@@ -63,6 +84,92 @@ const onclick = async () => {
 
     //结束loading
     fullscreenLoading.value = false;
+};
+
+const onAutoCopy = async () => {
+    if (table && view) {
+        //开始Loading
+        fullscreenLoading.value = true;
+
+        selectedRecordIdList = await view.getSelectedRecordIdList();
+
+        let newRecords = await addRecords();
+
+        if (newRecords) {
+            let codeMap = await setupIdMap(newRecords);
+
+            await setParentValue(newRecords, codeMap);
+        }
+        //结束loading
+        fullscreenLoading.value = false;
+    }
+};
+
+const addRecords = async () => {
+    if (table && selectedRecordIdList) {
+        let selecltedRecordValues: IRecordValue[] = [];
+        const fieldList = await table.getFieldList();
+
+        for (let index = 0; index < selectedRecordIdList.length; index++) {
+            const recordID = selectedRecordIdList[index];
+            let recordValue: IRecordValue = { fields: {} };
+
+            if (recordID) {
+                for (const field of fieldList) {
+                    const mfieldType = await field.getType();
+                    const isCopyField =
+                        mfieldType === (FieldType.Number as Number) ||
+                        mfieldType === (FieldType.Text as Number) ||
+                        mfieldType === (FieldType.SingleSelect as Number) ||
+                        mfieldType === (FieldType.MultiSelect as Number) ||
+                        mfieldType === (FieldType.Url as Number) ||
+                        mfieldType === (FieldType.Phone as Number);
+
+                    if (parentField && field.id !== parentField.id && isCopyField) {
+                        recordValue.fields[field.id] = await field.getValue(recordID);
+                    }
+                }
+                selecltedRecordValues.push(recordValue);
+            }
+        }
+
+        return await table.addRecords(selecltedRecordValues);
+    }
+};
+
+const setupIdMap = async (newRecords: string[]) => {
+    let codeMap = new Map<string, string>();
+
+    for (let index = 0; index < newRecords.length; index++) {
+        const recordID = newRecords[index];
+        if (hierarchyCodeField && recordID) {
+            let autoCodeObj = await hierarchyCodeField.getValue(recordID);
+            let autCodeText = autoCodeObj[0].text;
+            codeMap.set(autCodeText, recordID);
+        }
+    }
+    return codeMap;
+};
+
+const setParentValue = async (newRecords: string[], codeMap: Map<string, string>) => {
+    for (let index = 0; index < newRecords.length; index++) {
+        const recordID = newRecords[index];
+        if (hierarchyCodeField && recordID) {
+            let autoCodeObj = await hierarchyCodeField.getValue(recordID);
+            let autCodeText = autoCodeObj[0].text;
+            let value = autCodeText.replace(/\.\d+$/, "");
+            if (autCodeText.includes(".") && parentField) {
+                await parentField.setValue(recordID, {
+                    text: "",
+                    type: "",
+                    recordIds: [codeMap.get(value) as string],
+                    tableId: "",
+                    record_ids: [codeMap.get(value) as string],
+                    table_id: "",
+                });
+            }
+        }
+    }
 };
 
 const setupParentArr = async () => {
