@@ -91,8 +91,9 @@ export class MCopy {
 
         for (let index = 0; index < newRecords.length; index++) {
             const recordID = newRecords[index];
-            if (this.hierarchyCodeField && recordID) {
-                let autoCodeObj = await this.hierarchyCodeField.getValue(recordID);
+            let autoCodeObj = this.hierarchyCodeField ? await this.hierarchyCodeField.getValue(recordID) : null;
+
+            if (autoCodeObj) {
                 let autCodeText = autoCodeObj[0].text;
                 codeMap.set(autCodeText, recordID);
             }
