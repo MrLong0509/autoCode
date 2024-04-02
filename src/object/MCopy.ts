@@ -7,6 +7,7 @@ import {
     ICell,
     IField,
     bitable,
+    IRecord,
 } from "@lark-base-open/js-sdk";
 
 export class MCopy {
@@ -102,6 +103,8 @@ export class MCopy {
     };
 
     setParentValue = async (newRecords: string[], codeMap: Map<string, string>) => {
+        let records: IRecord[] = [];
+
         for (let index = 0; index < newRecords.length; index++) {
             const recordID = newRecords[index];
             if (this.hierarchyCodeField && recordID) {
@@ -109,16 +112,26 @@ export class MCopy {
                 let autCodeText = autoCodeObj[0].text;
                 let value = autCodeText.replace(/\.\d+$/, "");
                 if (autCodeText.includes(".") && this.parentField) {
-                    await this.parentField.setValue(recordID, {
-                        text: "",
-                        type: "",
-                        recordIds: [codeMap.get(value) as string],
-                        tableId: "",
-                        record_ids: [codeMap.get(value) as string],
-                        table_id: "",
-                    });
+                    let record: IRecord = {
+                        recordId: recordID,
+                        fields: {
+                            [this.parentField.id]: {
+                                text: "",
+                                type: "",
+                                recordIds: [codeMap.get(value) as string],
+                                tableId: "",
+                                record_ids: [codeMap.get(value) as string],
+                                table_id: "",
+                            },
+                        },
+                    };
+                    records.push(record);
                 }
             }
+        }
+
+        if (records.length > 0 && this.table) {
+            this.table.setRecords(records);
         }
     };
 }

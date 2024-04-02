@@ -7,7 +7,7 @@ export {}
 
 declare module 'vue' {
   export interface GlobalComponents {
-    'AutoCode element': typeof import('./src/components/autoCode element.vue')['default']
+    AutoCode: typeof import('./src/components/autoCode.vue')['default']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElCard: typeof import('element-plus/es')['ElCard']
     element: typeof import('./src/components/autoCode element.vue')['default']

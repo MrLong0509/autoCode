@@ -1,6 +1,6 @@
 import { ITable, ITextField, IGridView, ISingleLinkField, bitable } from "@lark-base-open/js-sdk";
 
-export class mAutoCode {
+export class MAutoCode {
     table: ITable | null = null;
     view: IGridView | null = null;
     recordIdList: (string | undefined)[] | null = null;

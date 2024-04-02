@@ -38,7 +38,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { MCopy } from "../object/MCopy";
-import { mAutoCode } from "../object/MAutoCode";
+import { MAutoCode } from "../object/MAutoCode";
 
 const fullscreenLoading = ref(false);
 
@@ -53,7 +53,7 @@ const onAutoCode = async () => {
     //开始Loading
     fullscreenLoading.value = true;
 
-    let autoCode: mAutoCode = new mAutoCode();
+    let autoCode: MAutoCode = new MAutoCode();
     await autoCode.action();
 
     //结束loading
@@ -64,7 +64,7 @@ const onAutoCopy = async () => {
     //开始Loading
     fullscreenLoading.value = true;
 
-    let copy = new MCopy();
+    let copy: MCopy = new MCopy();
     await copy.action();
 
     //结束loading
