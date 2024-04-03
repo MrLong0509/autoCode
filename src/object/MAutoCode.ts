@@ -1,10 +1,11 @@
-import { ITable, ITextField, IGridView, ISingleLinkField, bitable } from "@lark-base-open/js-sdk";
+import { ITable, ITextField, IGridView, ISingleLinkField, bitable, IRecord } from "@lark-base-open/js-sdk";
 
 export class MAutoCode {
     table: ITable | null = null;
     view: IGridView | null = null;
     recordIdList: (string | undefined)[] | null = null;
     hierarchyCodeField: ITextField | null = null;
+    hierarchyCodes: IRecord[] = [];
     parentField: ISingleLinkField | null = null;
     childArr: string[] = [];
     parentArr: string[] = [];
@@ -19,8 +20,11 @@ export class MAutoCode {
         //初始化层级数组
         await this.setupParentArr();
 
+        //创建层级编码
+        await this.createHierarchyCode();
+
         //设置层级编码
-        await this.setHierarchyID();
+        await this.setHierarchyCode();
     };
 
     setupParentArr = async () => {
@@ -51,31 +55,49 @@ export class MAutoCode {
         }
     };
 
-    setHierarchyID = async () => {
+    createHierarchyCode = async () => {
         if (this.view && this.hierarchyCodeField) {
             for (let i = 0; i < this.parentArr.length; i++) {
                 const recordID = this.parentArr[i];
                 let hierarchyCode = (i + 1).toString();
 
                 this.hierarchyCodeField.setValue(recordID, hierarchyCode);
-                await this.setChildHierarchyID(this.view, hierarchyCode, recordID);
+                await this.createChildHierarchyCode(this.view, hierarchyCode, recordID);
             }
         }
     };
 
-    setChildHierarchyID = async (view: IGridView, hierarchyCode: string, recordID: string) => {
+    createChildHierarchyCode = async (view: IGridView, hierarchyCode: string, recordID: string) => {
         let childRecordIdArr = await view.getChildRecordIdList(recordID);
 
         if (childRecordIdArr) {
             for (let i = 0; i < childRecordIdArr.length; i++) {
-                let childRecordID = childRecordIdArr[i];
-
-                let childHierarchyCode = hierarchyCode + "." + (i + 1);
-
                 if (this.hierarchyCodeField) {
-                    this.hierarchyCodeField.setValue(childRecordID, childHierarchyCode);
+                    let childRecordID = childRecordIdArr[i];
+                    let childHierarchyCode = hierarchyCode + "." + (i + 1);
+
+                    this.hierarchyCodes.push({
+                        recordId: childRecordID,
+                        fields: {
+                            [this.hierarchyCodeField.id]: childHierarchyCode,
+                        },
+                    });
+                    await this.createChildHierarchyCode(view, childHierarchyCode, childRecordID);
                 }
-                this.setChildHierarchyID(view, childHierarchyCode, childRecordID);
+            }
+        }
+    };
+
+    setHierarchyCode = async () => {
+        const arr = this.hierarchyCodes;
+        const limitedNum = 5000;
+
+        if (arr.length > 0 && this.table) {
+            const N = Math.ceil(arr.length / limitedNum);
+
+            for (let index = 1; index <= N; index++) {
+                const subArr = arr.slice((index - 1) * limitedNum, index * limitedNum);
+                await this.table.setRecords(subArr);
             }
         }
     };
