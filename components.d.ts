@@ -10,7 +10,6 @@ declare module 'vue' {
     AutoCode: typeof import('./src/components/autoCode.vue')['default']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElCard: typeof import('element-plus/es')['ElCard']
-    element: typeof import('./src/components/autoCode element.vue')['default']
     ElImage: typeof import('element-plus/es')['ElImage']
     ElRow: typeof import('element-plus/es')['ElRow']
   }

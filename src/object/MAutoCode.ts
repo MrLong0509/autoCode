@@ -1,104 +1,71 @@
-import { ITable, ITextField, IGridView, ISingleLinkField, bitable, IRecord } from "@lark-base-open/js-sdk";
+import { ITextField, ISingleLinkField, IRecord } from "@lark-base-open/js-sdk";
+import { MBitable } from "./MBitable";
 
 export class MAutoCode {
-    table: ITable | null = null;
-    view: IGridView | null = null;
-    recordIdList: (string | undefined)[] | null = null;
-    hierarchyCodeField: ITextField | null = null;
+    mBitable: MBitable | undefined = undefined;
+    hierarchyCodeField: ITextField | undefined = undefined;
     hierarchyCodes: IRecord[] = [];
-    parentField: ISingleLinkField | null = null;
+    parentField: ISingleLinkField | undefined = undefined;
     childArr: string[] = [];
     parentArr: string[] = [];
 
     action = async () => {
-        this.table = await bitable.base.getActiveTable();
-        this.view = (await this.table.getActiveView()) as IGridView;
-        this.recordIdList = await this.view.getVisibleRecordIdList();
-        this.hierarchyCodeField = await this.table.getField<ITextField>("层级编码");
-        this.parentField = await this.table.getField<ISingleLinkField>("父记录");
+        this.mBitable = new MBitable();
+        await this.mBitable.initialize();
+        if (!this.mBitable) return;
 
-        //初始化层级数组
-        await this.setupParentArr();
+        this.hierarchyCodeField = await this.mBitable.getTextFieldByName("层级编码");
+        this.parentField = await this.mBitable.getSingleLinkFieldByName("父记录");
 
-        //创建层级编码
-        await this.createHierarchyCode();
+        //设置层级编码数据
+        await this.setupHierarchyCode();
 
-        //设置层级编码
-        await this.setHierarchyCode();
+        //设置层级编码到表格
+        await this.setHierarchyCodetoBitable();
     };
 
-    setupParentArr = async () => {
-        if (this.recordIdList && this.view) {
-            for (let i = 0; i < this.recordIdList.length; i++) {
-                const recordID = this.recordIdList[i];
+    setupHierarchyCode = async () => {
+        if (!this.mBitable || !this.mBitable.recordIds || !this.mBitable.view) return;
 
-                if (recordID) {
-                    await this.setupChildArr(this.view, recordID);
-                }
-            }
-            this.parentArr = this.recordIdList.filter(
-                element => !this.childArr.includes(element as string)
-            ) as string[];
+        //设置子记录
+        for (let i = 0; i < this.mBitable.parentRecordIds.length; i++) {
+            const parentRecordId = this.mBitable.parentRecordIds[i];
+            const hierarchyCode = (i + 1).toString();
+            this.pushHierarchyCode(parentRecordId, hierarchyCode);
+
+            await this.setupChildHierarchyCode(parentRecordId, hierarchyCode);
         }
     };
 
-    setupChildArr = async (view: IGridView, recordID: string) => {
-        let childRecordIdArr = await view.getChildRecordIdList(recordID);
+    setupChildHierarchyCode = async (parentRecordId: string, parentHierarchyCode: string) => {
+        if (!this.mBitable) return;
 
-        if (childRecordIdArr) {
-            for (let i = 0; i < childRecordIdArr.length; i++) {
-                let childRecordID = childRecordIdArr[i];
-                this.childArr.push(childRecordID);
+        const childRecordIds = await this.mBitable.getChildRecordIdsByName(parentRecordId);
+        if (!childRecordIds) return;
 
-                this.setupChildArr(view, childRecordID);
-            }
+        for (let i = 0; i < childRecordIds.length; i++) {
+            const childRecordID = childRecordIds[i];
+            const childHierarchyCode = parentHierarchyCode + "." + (i + 1);
+            this.pushHierarchyCode(childRecordID, childHierarchyCode);
+
+            //递归设置子记录的层级编码数据
+            await this.setupChildHierarchyCode(childRecordID, childHierarchyCode);
         }
     };
 
-    createHierarchyCode = async () => {
-        if (this.view && this.hierarchyCodeField) {
-            for (let i = 0; i < this.parentArr.length; i++) {
-                const recordID = this.parentArr[i];
-                let hierarchyCode = (i + 1).toString();
+    pushHierarchyCode = (recordID: string, hierarchyCode: string) => {
+        if (!this.hierarchyCodeField) return;
 
-                this.hierarchyCodeField.setValue(recordID, hierarchyCode);
-                await this.createChildHierarchyCode(this.view, hierarchyCode, recordID);
-            }
-        }
+        this.hierarchyCodes.push({
+            recordId: recordID,
+            fields: {
+                [this.hierarchyCodeField.id]: hierarchyCode,
+            },
+        });
     };
 
-    createChildHierarchyCode = async (view: IGridView, hierarchyCode: string, recordID: string) => {
-        let childRecordIdArr = await view.getChildRecordIdList(recordID);
-
-        if (childRecordIdArr) {
-            for (let i = 0; i < childRecordIdArr.length; i++) {
-                if (this.hierarchyCodeField) {
-                    let childRecordID = childRecordIdArr[i];
-                    let childHierarchyCode = hierarchyCode + "." + (i + 1);
-
-                    this.hierarchyCodes.push({
-                        recordId: childRecordID,
-                        fields: {
-                            [this.hierarchyCodeField.id]: childHierarchyCode,
-                        },
-                    });
-                    await this.createChildHierarchyCode(view, childHierarchyCode, childRecordID);
-                }
-            }
-        }
-    };
-
-    setHierarchyCode = async () => {
-        const arr = this.hierarchyCodes;
-        const limitedNum = 5000;
-
-        if (arr.length > 0 && this.table) {
-            const N = Math.ceil(arr.length / limitedNum);
-
-            for (let index = 1; index <= N; index++) {
-                const subArr = arr.slice((index - 1) * limitedNum, index * limitedNum);
-                await this.table.setRecords(subArr);
-            }
-        }
+    setHierarchyCodetoBitable = async () => {
+        if (!this.mBitable) return;
+        this.mBitable.setRecordsToBitable(this.hierarchyCodes);
     };
 }
