@@ -1,8 +1,6 @@
-import { ITable, IGridView, bitable, ITextField, ISingleLinkField, IRecord } from "@lark-base-open/js-sdk";
+import { ITable, IGridView, bitable, ITextField, ISingleLinkField, IRecord, ICell } from "@lark-base-open/js-sdk";
 
 const _MAX_RECORD_COUNT = 200;
-const _MAX_CHILDS_COUNT = 200;
-const _MAX_RECORD_TIME = 5000;
 
 export class MBitable {
     private _table: ITable | null = null;
@@ -60,6 +58,18 @@ export class MBitable {
         ) as string[];
     };
 
+    getSelectedRecordIds = async () => {
+        if (!this._view) return;
+        const selectedRecordIds = await this._view.getSelectedRecordIdList();
+        return selectedRecordIds;
+    };
+
+    getFields = async () => {
+        if (!this._table) return;
+        //获取表格的所有字段(耗时较多，待解决)
+        return await this._table.getFieldList();
+    };
+
     getChildRecordIdsByName = async (parentId: string) => {
         if (!this._view) return;
         return (
@@ -81,12 +91,27 @@ export class MBitable {
         if (records.length === 0 || !this._table) return;
 
         //分批次设置层级编码数据到表格
-        const N = Math.ceil(records.length / _MAX_RECORD_TIME);
+        const N = Math.ceil(records.length / _MAX_RECORD_COUNT);
 
         for (let index = 1; index <= N; index++) {
-            const subRecords = records.slice((index - 1) * _MAX_RECORD_TIME, index * _MAX_RECORD_TIME);
+            const subRecords = records.slice((index - 1) * _MAX_RECORD_COUNT, index * _MAX_RECORD_COUNT);
             await this._table.setRecords(subRecords);
         }
+    };
+
+    addRecordsToBitalbeByCells = async (cells: ICell[][] = []) => {
+        if (cells.length === 0 || !this._table) return;
+
+        //分批次设置层级编码数据到表格
+        const records: string[] = [];
+        const N = Math.ceil(cells.length / _MAX_RECORD_COUNT);
+        for (let index = 1; index <= N; index++) {
+            const subRecords = cells.slice((index - 1) * _MAX_RECORD_COUNT, index * _MAX_RECORD_COUNT);
+            const newRecords = await this._table.addRecords(subRecords);
+            records.push(...newRecords);
+        }
+
+        return records;
     };
 
     get view() {
@@ -111,13 +136,5 @@ export class MBitable {
 
     get MAX_RECORD_COUNT() {
         return _MAX_RECORD_COUNT;
-    }
-
-    get MAX_CHILDS_COUNT() {
-        return _MAX_CHILDS_COUNT;
-    }
-
-    get MAX_RECORD_TIME() {
-        return _MAX_RECORD_TIME;
     }
 }

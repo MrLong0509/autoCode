@@ -17,25 +17,26 @@ export class MCopy {
         this.hierarchyCodeField = await this.mBitable.getTextFieldByName("层级编码");
         this.parentField = await this.mBitable.getSingleLinkFieldByName("父记录");
 
-        let selectedRecordIdList = await this.mBitable.view.getSelectedRecordIdList();
-        let fieldCopyList = await this.setupCopyList();
+        const selectedRecordIdList = await this.mBitable.getSelectedRecordIds();
+        const fieldCopyList = await this.setupFieldCopyList();
 
-        if (!fieldCopyList || fieldCopyList.length === 0) return;
-        let newRecords = await this.addRecords(fieldCopyList, selectedRecordIdList);
+        if (!fieldCopyList || !selectedRecordIdList) return;
+        const newRecords = await this.addRecords(fieldCopyList, selectedRecordIdList);
 
         if (!newRecords) return;
-        let codeMap = await this.setupIdMap(newRecords);
+        const codeMap = await this.setupIdMap(newRecords);
 
         if (!codeMap) return;
         await this.setParentValue(newRecords, codeMap);
     };
 
-    setupCopyList = async () => {
-        let fieldCopyList: IField[] = [];
-
+    setupFieldCopyList = async () => {
         if (!this.mBitable || !this.mBitable.table) return;
 
-        const fieldList = await this.mBitable.table.getFieldList();
+        const fieldCopyList: IField[] = [];
+        const fieldList = await this.mBitable.getFields();
+        if (!fieldList) return;
+
         for (let index = 0; index < fieldList.length; index++) {
             const field = fieldList[index];
             const eType = await field.getType();
@@ -55,43 +56,43 @@ export class MCopy {
     addRecords = async (fieldCopyList: IField[], selectedRecordIdList: string[]) => {
         if (!this.mBitable || !this.mBitable.table || !this.parentField) return;
 
-        let aCells: ICell[][] = [];
-        let ignoreID = this.parentField.id;
+        const aCells: ICell[][] = [];
+        const ignoreID = this.parentField.id;
 
         for (let index = 0; index < selectedRecordIdList.length; index++) {
             const selectedRecordID = selectedRecordIdList[index];
-            let cells = await this.copyRowCellsByRecordID(fieldCopyList, selectedRecordID, ignoreID);
+            const cells = await this.copyRowCellsByRecordID(fieldCopyList, selectedRecordID, ignoreID);
             aCells.push(cells);
         }
 
-        return await this.mBitable.table.addRecords(aCells);
+        return await this.mBitable.addRecordsToBitalbeByCells(aCells);
     };
 
     copyRowCellsByRecordID = async (fieldCopyList: IField[], RecordID: string, ignoreID: string) => {
-        let cells: ICell[] = [];
+        const cells: ICell[] = [];
         for (let index = 0; index < fieldCopyList.length; index++) {
             const field = fieldCopyList[index];
             const cellValue = await field.getValue(RecordID);
 
             if (!cellValue || field.id === ignoreID) continue;
 
-            let cell = await field.createCell(cellValue);
+            const cell = await field.createCell(cellValue);
             cells.push(cell);
         }
         return cells;
     };
 
     setupIdMap = async (newRecords: string[]) => {
-        let codeMap = new Map<string, string>();
+        if (!this.hierarchyCodeField) return;
+
+        const codeMap = new Map<string, string>();
 
         for (let index = 0; index < newRecords.length; index++) {
-            if (!this.hierarchyCodeField) return;
-
             const recordID = newRecords[index];
-            let autoCodeObj = await this.hierarchyCodeField.getValue(recordID);
 
+            const autoCodeObj = await this.hierarchyCodeField.getValue(recordID);
             if (autoCodeObj) {
-                let autCodeText = autoCodeObj[0].text;
+                const autCodeText = autoCodeObj[0].text;
                 codeMap.set(autCodeText, recordID);
             }
         }
@@ -100,17 +101,17 @@ export class MCopy {
     };
 
     setParentValue = async (newRecords: string[], codeMap: Map<string, string>) => {
-        let records: IRecord[] = [];
+        const records: IRecord[] = [];
         if (!this.mBitable || !this.mBitable.table || !this.parentField || !this.hierarchyCodeField) return;
 
         for (let index = 0; index < newRecords.length; index++) {
             const recordID = newRecords[index];
 
-            let autoCodeObj = await this.hierarchyCodeField.getValue(recordID);
-            let autCodeText = autoCodeObj[0].text;
-            let value = autCodeText.replace(/\.\d+$/, "");
+            const autoCodeObj = await this.hierarchyCodeField.getValue(recordID);
+            const autCodeText = autoCodeObj[0].text;
+            const value = autCodeText.replace(/\.\d+$/, "");
             if (autCodeText.includes(".")) {
-                let record: IRecord = {
+                const record: IRecord = {
                     recordId: recordID,
                     fields: {
                         [this.parentField.id]: {
@@ -127,6 +128,6 @@ export class MCopy {
             }
         }
 
-        await this.mBitable.table.setRecords(records);
+        await this.mBitable.setRecordsToBitable(records);
     };
 }
