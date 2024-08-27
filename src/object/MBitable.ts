@@ -90,7 +90,7 @@ export class MBitable {
     setRecordsToBitable = async (records: IRecord[] = []) => {
         if (records.length === 0 || !this._table) return;
 
-        //分批次设置层级编码数据到表格
+        //分批次设置数据到表格
         const N = Math.ceil(records.length / _MAX_RECORD_COUNT);
 
         for (let index = 1; index <= N; index++) {
@@ -102,7 +102,7 @@ export class MBitable {
     addRecordsToBitalbeByCells = async (cells: ICell[][] = []) => {
         if (cells.length === 0 || !this._table) return;
 
-        //分批次设置层级编码数据到表格
+        //分批次添加数据到表格
         const records: string[] = [];
         const N = Math.ceil(cells.length / _MAX_RECORD_COUNT);
         for (let index = 1; index <= N; index++) {
