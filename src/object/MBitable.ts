@@ -1,51 +1,60 @@
 import { ITable, IGridView, bitable, ITextField, ISingleLinkField, IRecord, ICell } from "@lark-base-open/js-sdk";
 
-const _MAX_RECORD_COUNT = 200;
+const MAX_RECORD_COUNT = 200;
+
+//临时存储总分页记录标记
+let totalCount: number = 0;
+let pageToken: number | undefined = 0;
+let hasMore: boolean = false;
+//临时存储子分页记录标记
+let childTotalCount: number = 0;
+let childPageToken: number | undefined = 0;
+let childHasMore: boolean = false;
+let childRecordIds: string[] = [];
 
 export class MBitable {
     private _table: ITable | null = null;
     private _view: IGridView | null = null;
 
-    private _recordIds: string[] = [];
-    private _totalCount: number = 0;
-    private _pageToken: number | undefined = 0;
-    private _hasMore: boolean = false;
-
+    private _totalRecordIds: string[] = [];
     private _childRecordIds: string[] = [];
     private _parentRecordIds: string[] = [];
 
     initialize = async () => {
         this._table = await bitable.base.getActiveTable();
         this._view = (await this._table.getActiveView()) as IGridView;
-        await this.getRecordIds();
         await this.setupRecordIds();
-    };
-
-    private getRecordIds = async () => {
-        let recordIds: string[] = [];
-
-        if (this._view) {
-            ({
-                total: this._totalCount,
-                pageToken: this._pageToken,
-                hasMore: this._hasMore,
-                recordIds: recordIds,
-            } = await this._view.getVisibleRecordIdListByPage({
-                pageSize: this.MAX_RECORD_COUNT,
-                pageToken: this._pageToken,
-            }));
-
-            this._recordIds.push(...recordIds);
-
-            if (this._hasMore) {
-                this.getRecordIds();
-            }
-        }
+        await this.filterRecordIds();
     };
 
     private setupRecordIds = async () => {
-        for (let i = 0; i < this._recordIds.length; i++) {
-            const recordId = this._recordIds[i];
+        if (!this._view) return;
+
+        let recordIds: string[] = [];
+        ({
+            total: totalCount,
+            pageToken: pageToken,
+            hasMore: hasMore,
+            recordIds: recordIds,
+        } = await this._view.getVisibleRecordIdListByPage({
+            pageSize: MAX_RECORD_COUNT,
+            pageToken: pageToken,
+        }));
+
+        this._totalRecordIds.push(...recordIds);
+
+        if (hasMore) {
+            await this.setupRecordIds();
+        } else {
+            totalCount = 0;
+            pageToken = 0;
+            hasMore = false;
+        }
+    };
+
+    private filterRecordIds = async () => {
+        for (let i = 0; i < this._totalRecordIds.length; i++) {
+            const recordId = this._totalRecordIds[i];
 
             const childRecordIds = await this.getChildRecordIdsByName(recordId);
             if (!childRecordIds) continue;
@@ -53,7 +62,7 @@ export class MBitable {
             this._childRecordIds.push(...childRecordIds);
         }
 
-        this._parentRecordIds = this.recordIds.filter(
+        this._parentRecordIds = this._totalRecordIds.filter(
             element => !this._childRecordIds.includes(element as string)
         ) as string[];
     };
@@ -72,11 +81,33 @@ export class MBitable {
 
     getChildRecordIdsByName = async (parentId: string) => {
         if (!this._view) return;
-        return (
-            await this._view.getChildRecordIdListByPage({
-                parentRecordId: parentId,
-            })
-        ).recordIds;
+
+        let recordIds: string[] = [];
+        ({
+            total: childTotalCount,
+            pageToken: childPageToken,
+            hasMore: childHasMore,
+            recordIds: recordIds,
+        } = await this._view.getChildRecordIdListByPage({
+            parentRecordId: parentId,
+            pageSize: MAX_RECORD_COUNT,
+            pageToken: childPageToken,
+        }));
+
+        childRecordIds.push(...recordIds);
+
+        if (childHasMore) {
+            await this.getChildRecordIdsByName(parentId);
+        }
+
+        if (!childHasMore) {
+            childTotalCount = 0;
+            childPageToken = 0;
+            childHasMore = false;
+            recordIds = childRecordIds;
+            childRecordIds = [];
+            return recordIds;
+        }
     };
 
     getTextFieldByName = async (name: string) => {
@@ -91,10 +122,10 @@ export class MBitable {
         if (records.length === 0 || !this._table) return;
 
         //分批次设置数据到表格
-        const N = Math.ceil(records.length / _MAX_RECORD_COUNT);
+        const N = Math.ceil(records.length / MAX_RECORD_COUNT);
 
         for (let index = 1; index <= N; index++) {
-            const subRecords = records.slice((index - 1) * _MAX_RECORD_COUNT, index * _MAX_RECORD_COUNT);
+            const subRecords = records.slice((index - 1) * MAX_RECORD_COUNT, index * MAX_RECORD_COUNT);
             await this._table.setRecords(subRecords);
         }
     };
@@ -104,9 +135,9 @@ export class MBitable {
 
         //分批次添加数据到表格
         const records: string[] = [];
-        const N = Math.ceil(cells.length / _MAX_RECORD_COUNT);
+        const N = Math.ceil(cells.length / MAX_RECORD_COUNT);
         for (let index = 1; index <= N; index++) {
-            const subRecords = cells.slice((index - 1) * _MAX_RECORD_COUNT, index * _MAX_RECORD_COUNT);
+            const subRecords = cells.slice((index - 1) * MAX_RECORD_COUNT, index * MAX_RECORD_COUNT);
             const newRecords = await this._table.addRecords(subRecords);
             records.push(...newRecords);
         }
@@ -123,7 +154,7 @@ export class MBitable {
     }
 
     get recordIds() {
-        return this._recordIds;
+        return this._totalRecordIds;
     }
 
     get parentRecordIds() {
@@ -131,10 +162,14 @@ export class MBitable {
     }
 
     get totalCount() {
-        return this._totalCount;
+        return totalCount;
+    }
+
+    get childTotalCount() {
+        return childTotalCount;
     }
 
     get MAX_RECORD_COUNT() {
-        return _MAX_RECORD_COUNT;
+        return MAX_RECORD_COUNT;
     }
 }
