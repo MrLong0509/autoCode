@@ -98,9 +98,7 @@ export class MBitable {
 
         if (childHasMore) {
             await this.getChildRecordIdsByName(parentId);
-        }
-
-        if (!childHasMore) {
+        } else {
             childTotalCount = 0;
             childPageToken = 0;
             childHasMore = false;

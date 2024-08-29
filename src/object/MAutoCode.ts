@@ -66,6 +66,6 @@ export class MAutoCode {
 
     setHierarchyCodetoBitable = async () => {
         if (!this.mBitable) return;
-        this.mBitable.setRecordsToBitable(this.hierarchyCodes);
+        await this.mBitable.setRecordsToBitable(this.hierarchyCodes);
     };
 }
