@@ -2,16 +2,6 @@ import { ITable, IGridView, bitable, ITextField, ISingleLinkField, IRecord, ICel
 
 const MAX_RECORD_COUNT = 200;
 
-//临时存储总分页记录标记
-let totalCount: number = 0;
-let pageToken: number | undefined = 0;
-let hasMore: boolean = false;
-//临时存储子分页记录标记
-let childTotalCount: number = 0;
-let childPageToken: number | undefined = 0;
-let childHasMore: boolean = false;
-let childRecordIds: string[] = [];
-
 export class MBitable {
     private _table: ITable | null = null;
     private _view: IGridView | null = null;
@@ -23,32 +13,10 @@ export class MBitable {
     initialize = async () => {
         this._table = await bitable.base.getActiveTable();
         this._view = (await this._table.getActiveView()) as IGridView;
-        await this.setupRecordIds();
-        await this.filterRecordIds();
-    };
-
-    private setupRecordIds = async () => {
-        if (!this._view) return;
-
-        let recordIds: string[] = [];
-        ({
-            total: totalCount,
-            pageToken: pageToken,
-            hasMore: hasMore,
-            recordIds: recordIds,
-        } = await this._view.getVisibleRecordIdListByPage({
-            pageSize: MAX_RECORD_COUNT,
-            pageToken: pageToken,
-        }));
-
-        this._totalRecordIds.push(...recordIds);
-
-        if (hasMore) {
-            await this.setupRecordIds();
-        } else {
-            totalCount = 0;
-            pageToken = 0;
-            hasMore = false;
+        const result = await this.getTotalRecordIds();
+        if (result) {
+            this._totalRecordIds = result;
+            await this.filterRecordIds();
         }
     };
 
@@ -79,33 +47,70 @@ export class MBitable {
         return await this._table.getFieldList();
     };
 
+    getTotalRecordIds = async () => {
+        if (!this._view) return;
+        const getVisibleRecordIdListByPage = this._view.getVisibleRecordIdListByPage.bind(this._view);
+
+        //临时存储分页记录标记
+        let pageToken: number | undefined = 0;
+        let hasMore: boolean = false;
+        let recordIds: string[] = [];
+        let totalRecordIds: string[] = [];
+
+        const getRecordIds = async () => {
+            ({
+                pageToken: pageToken,
+                hasMore: hasMore,
+                recordIds: recordIds,
+            } = await getVisibleRecordIdListByPage({
+                pageSize: MAX_RECORD_COUNT,
+                pageToken: pageToken,
+            }));
+
+            totalRecordIds.push(...recordIds);
+            recordIds = [];
+
+            if (hasMore) {
+                getRecordIds();
+            }
+
+            return totalRecordIds;
+        };
+
+        return getRecordIds();
+    };
+
     getChildRecordIdsByName = async (parentId: string) => {
         if (!this._view) return;
+        const getChildRecordIdListByPage = this._view.getChildRecordIdListByPage.bind(this._view);
 
+        //临时存储分页记录标记
+        let pageToken: number | undefined = 0;
+        let hasMore: boolean = false;
         let recordIds: string[] = [];
-        ({
-            total: childTotalCount,
-            pageToken: childPageToken,
-            hasMore: childHasMore,
-            recordIds: recordIds,
-        } = await this._view.getChildRecordIdListByPage({
-            parentRecordId: parentId,
-            pageSize: MAX_RECORD_COUNT,
-            pageToken: childPageToken,
-        }));
+        let childRecordIds: string[] = [];
 
-        childRecordIds.push(...recordIds);
+        const getChildRecordIds = async () => {
+            ({
+                pageToken: pageToken,
+                hasMore: hasMore,
+                recordIds: recordIds,
+            } = await getChildRecordIdListByPage({
+                parentRecordId: parentId,
+                pageSize: MAX_RECORD_COUNT,
+                pageToken: pageToken,
+            }));
 
-        if (childHasMore) {
-            await this.getChildRecordIdsByName(parentId);
-        } else {
-            childTotalCount = 0;
-            childPageToken = 0;
-            childHasMore = false;
-            recordIds = childRecordIds;
-            childRecordIds = [];
-            return recordIds;
-        }
+            childRecordIds.push(...recordIds);
+            recordIds = [];
+
+            if (hasMore) {
+                getChildRecordIds();
+            }
+            return childRecordIds;
+        };
+
+        return getChildRecordIds();
     };
 
     getTextFieldByName = async (name: string) => {
@@ -157,14 +162,6 @@ export class MBitable {
 
     get parentRecordIds() {
         return this._parentRecordIds;
-    }
-
-    get totalCount() {
-        return totalCount;
-    }
-
-    get childTotalCount() {
-        return childTotalCount;
     }
 
     get MAX_RECORD_COUNT() {
