@@ -6,33 +6,33 @@ export class MAutoCode {
     hierarchyCodeField: ITextField | undefined = undefined;
     hierarchyCodes: IRecord[] = [];
     parentField: ISingleLinkField | undefined = undefined;
-    childArr: string[] = [];
-    parentArr: string[] = [];
 
     action = async () => {
-        this.mBitable = new MBitable();
-        await this.mBitable.initialize();
-        if (!this.mBitable) return;
+        try {
+            this.mBitable = new MBitable();
+            await this.mBitable.initialize();
 
-        this.hierarchyCodeField = await this.mBitable.getTextFieldByName("层级编码");
-        this.parentField = await this.mBitable.getSingleLinkFieldByName("父记录");
+            if (!this.mBitable) throw new Error("MBitable 初始化失败");
 
-        //设置层级编码数据
-        await this.setupHierarchyCode();
+            this.hierarchyCodeField = await this.mBitable.getTextFieldByName("层级编码");
+            this.parentField = await this.mBitable.getSingleLinkFieldByName("父记录");
 
-        //设置层级编码到表格
-        await this.setHierarchyCodetoBitable();
+            // 设置层级编码数据
+            await this.setupHierarchyCode();
+
+            // 设置层级编码到表格
+            await this.setHierarchyCodetoBitable();
+        } catch (error) {
+            console.error("操作过程中发生错误:", error);
+        }
     };
 
     setupHierarchyCode = async () => {
-        if (!this.mBitable || !this.mBitable.recordIds || !this.mBitable.view) return;
+        if (!this.mBitable) return;
 
-        //设置子记录
-        for (let i = 0; i < this.mBitable.parentRecordIds.length; i++) {
-            const parentRecordId = this.mBitable.parentRecordIds[i];
-            const hierarchyCode = (i + 1).toString();
+        for (const [index, parentRecordId] of this.mBitable.parentRecordIds.entries()) {
+            const hierarchyCode = (index + 1).toString();
             this.pushHierarchyCode(parentRecordId, hierarchyCode);
-
             await this.setupChildHierarchyCode(parentRecordId, hierarchyCode);
         }
     };
@@ -41,14 +41,11 @@ export class MAutoCode {
         if (!this.mBitable) return;
 
         const childRecordIds = await this.mBitable.getChildRecordIdsByName(parentRecordId);
-        if (!childRecordIds) return;
+        if (!childRecordIds || childRecordIds.length === 0) return;
 
-        for (let i = 0; i < childRecordIds.length; i++) {
-            const childRecordID = childRecordIds[i];
-            const childHierarchyCode = parentHierarchyCode + "." + (i + 1);
+        for (const [index, childRecordID] of childRecordIds.entries()) {
+            const childHierarchyCode = `${parentHierarchyCode}.${index + 1}`;
             this.pushHierarchyCode(childRecordID, childHierarchyCode);
-
-            //递归设置子记录的层级编码数据
             await this.setupChildHierarchyCode(childRecordID, childHierarchyCode);
         }
     };
@@ -65,7 +62,7 @@ export class MAutoCode {
     };
 
     setHierarchyCodetoBitable = async () => {
-        if (!this.mBitable) return;
+        if (!this.mBitable || this.hierarchyCodes.length === 0) return;
         await this.mBitable.setRecordsToBitable(this.hierarchyCodes);
     };
 }
