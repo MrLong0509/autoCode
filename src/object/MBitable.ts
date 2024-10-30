@@ -1,7 +1,19 @@
-import { ITable, IGridView, bitable, ITextField, ISingleLinkField, IRecord, ICell } from "@lark-base-open/js-sdk";
+import {
+    ITable,
+    IGridView,
+    bitable,
+    ITextField,
+    ISingleLinkField,
+    IRecord,
+    ICell,
+    ISingleSelectField,
+    INumberField,
+    IFormulaField,
+    ILookupField,
+} from "@lark-base-open/js-sdk";
 
 const MAX_RECORD_COUNT = 200;
-const MAX_CONCURRENT_REQUESTS = 200;
+const MAX_CONCURRENT_REQUESTS = 500;
 
 export class MBitable {
     private _table: ITable | null = null;
@@ -13,7 +25,10 @@ export class MBitable {
     initialize = async () => {
         this._table = await bitable.base.getActiveTable();
         this._view = (await this._table.getActiveView()) as IGridView;
+
+        console.time("MBitable getTotalRecordIds");
         const result = await this.getTotalRecordIds();
+        console.timeEnd("MBitable getTotalRecordIds");
         if (result) {
             this._totalRecordIds = result;
             await this.filterRecordIds();
@@ -48,7 +63,38 @@ export class MBitable {
         return allRecordIds;
     };
 
+    private processInBatches = async <T>(
+        items: T[],
+        processBatch: (batch: T[]) => Promise<any>,
+        batchSize: number,
+        maxConcurrentRequests: number
+    ): Promise<any[]> => {
+        if (items.length === 0) return [];
+
+        const totalItems = items.length;
+        const numBatches = Math.ceil(totalItems / batchSize);
+        const batchPromises: Promise<any>[] = [];
+
+        // 创建批处理任务
+        for (let i = 0; i < numBatches; i++) {
+            const subItems = items.slice(i * batchSize, (i + 1) * batchSize);
+            batchPromises.push(processBatch(subItems));
+        }
+
+        // 控制并发请求数量
+        const results: any[] = [];
+        for (let i = 0; i < batchPromises.length; i += maxConcurrentRequests) {
+            const batch = batchPromises.slice(i, i + maxConcurrentRequests);
+            const batchResults = await Promise.all(batch);
+            results.push(...batchResults);
+        }
+
+        return results;
+    };
+
     private filterRecordIds = async () => {
+        console.time("MBitable filterRecordIds");
+
         // 使用 Set 来存储所有的 childRecordIds，避免重复
         const childRecordIdsSet = new Set<string>();
         // 使用 Set 来存储所有的 totalRecordIds
@@ -69,6 +115,8 @@ export class MBitable {
         this._parentRecordIds = Array.from(parentRecordIdsSet).filter(
             element => !childRecordIdsSet.has(element as string)
         ) as string[];
+
+        console.timeEnd("MBitable filterRecordIds");
     };
 
     // 使用通用方法获取总记录 ID
@@ -89,6 +137,7 @@ export class MBitable {
         );
     };
 
+    //获取选中记录ID
     getSelectedRecordIds = async () => {
         if (!this._view) return;
         const selectedRecordIds = await this._view.getSelectedRecordIdList();
@@ -108,54 +157,49 @@ export class MBitable {
         if (this._table) return await this._table.getField<ISingleLinkField>(name);
     };
 
+    getSingleSelectFieldByName = async (name: string) => {
+        if (this._table) return await this._table.getField<ISingleSelectField>(name);
+    };
+
+    getNumberFieldByName = async (name: string) => {
+        if (this._table) return await this._table.getField<INumberField>(name);
+    };
+
+    getFormulaFieldbyName = async (name: string) => {
+        if (this._table) return await this._table.getField<IFormulaField>(name);
+    };
+
+    getLookupFieldbyName = async (name: string) => {
+        if (this._table) return await this._table.getField<ILookupField>(name);
+    };
+
     setRecordsToBitable = async (records: IRecord[] = []) => {
+        console.time("MBitable setRecordsToBitable");
+
         if (records.length === 0 || !this._table) return;
-        // 计算需要处理的批次数
-        const totalRecords = records.length;
-        const numBatches = Math.ceil(totalRecords / MAX_RECORD_COUNT);
 
-        // 如果 `setRecords` 方法支持批量操作，将所有数据合并到一个请求中处理
-        // (假设你可以根据具体需求修改 setRecords 方法以支持批量操作)
-        if (numBatches === 1) {
-            await this._table.setRecords(records);
-        } else {
-            // 异步并发处理批次
-            const batchPromises = [];
-            for (let i = 0; i < numBatches; i++) {
-                const subRecords = records.slice(i * MAX_RECORD_COUNT, (i + 1) * MAX_RECORD_COUNT);
-                batchPromises.push(this._table.setRecords(subRecords));
-            }
+        const setRecords = this._table.setRecords.bind(this._table);
+        await this.processInBatches(records, batch => setRecords(batch), MAX_RECORD_COUNT, MAX_CONCURRENT_REQUESTS);
 
-            // 控制并发量
-            for (let i = 0; i < batchPromises.length; i += MAX_CONCURRENT_REQUESTS) {
-                await Promise.all(batchPromises.slice(i, i + MAX_CONCURRENT_REQUESTS));
-            }
-        }
+        console.timeEnd("MBitable setRecordsToBitable");
     };
 
     addRecordsToBitalbeByCells = async (cells: ICell[][] = []) => {
+        console.time("MBitable addRecordsToBitalbeByCells");
+
         if (cells.length === 0 || !this._table) return [];
 
-        // 分批次处理记录
-        const totalRecords = cells.length;
-        const batchSize = MAX_RECORD_COUNT;
-        const numBatches = Math.ceil(totalRecords / batchSize);
-        const batchPromises: Promise<string[]>[] = [];
+        const addRecords = this._table.addRecords.bind(this._table);
+        const result = await this.processInBatches(
+            cells,
+            batch => addRecords(batch),
+            MAX_RECORD_COUNT,
+            MAX_CONCURRENT_REQUESTS
+        );
 
-        for (let i = 0; i < numBatches; i++) {
-            const subRecords = cells.slice(i * batchSize, (i + 1) * batchSize);
-            batchPromises.push(this._table.addRecords(subRecords));
-        }
+        console.timeEnd("MBitable addRecordsToBitalbeByCells");
 
-        // 控制并发请求数量
-        const result: string[] = [];
-        for (let i = 0; i < batchPromises.length; i += MAX_CONCURRENT_REQUESTS) {
-            const batch = batchPromises.slice(i, i + MAX_CONCURRENT_REQUESTS);
-            const batchResults = await Promise.all(batch);
-            batchResults.forEach(res => result.push(...res));
-        }
-
-        return result;
+        return result.flat();
     };
 
     get view() {
