@@ -6,8 +6,8 @@ import JSZip from "jszip";
 
 interface RowData {
     箱体名称: string;
-    箱体数量: number;
     箱体序号: number;
+    箱体数量: number;
     存货编码: string;
     物料属性: string;
     小类: string;
@@ -122,8 +122,8 @@ export class MExportBOM {
             // 构建行对象
             const row = {
                 箱体名称: String(boxName),
-                箱体数量: Number(boxNum),
                 箱体序号: Number(boxSortNum),
+                箱体数量: Number(boxNum),
                 存货编码: String(materialCode),
                 物料属性: String(materialAttributes),
                 小类: String(subdivision),

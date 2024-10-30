@@ -91,6 +91,7 @@ const onAutoCopy = async () => {
 
 const onExportBOM = async () => {
     const exportBom: MExportBOM = new MExportBOM();
+
     isExportVisible.value = true;
 
     await exportBom.action(onProgress);
@@ -98,10 +99,13 @@ const onExportBOM = async () => {
 
 const onProgress = (current: number, total: number) => {
     progress.value = Math.round((current / total) * 100);
+
     if (current === total) {
         isExportVisible.value = false;
+        progress.value = 0;
     }
 };
+
 const format = (percentage: number) => {
     return percentage >= 1 ? `${percentage}%` : "正在解析表格...";
 };
