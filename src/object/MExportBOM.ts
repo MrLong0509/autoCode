@@ -31,9 +31,6 @@ export class MExportBOM {
 
     private recordIdsToGroupMap: Map<string, string[]> = new Map();
 
-    private totalFileNum: number = 0;
-    private fileCurrentNum: number = 0;
-
     async action(onProgress: (current: number, total: number) => void) {
         // 初始化 Bitable
         await this.initBitable();
@@ -67,6 +64,8 @@ export class MExportBOM {
     }
 
     async initFields() {
+        console.time("initFields");
+
         if (!this.mBitable) return;
 
         // 获取箱体名称字段
@@ -79,57 +78,81 @@ export class MExportBOM {
         this.MaterialQuantity = await this.mBitable.getNumberFieldByName("单件箱体设计用量");
         this.procurementTotal = await this.mBitable.getNumberFieldByName("采购总量");
         this.materialDimensional = await this.mBitable.getTextFieldByName("设计量纲");
+
+        console.timeEnd("initFields");
     }
 
     async initKeyMap() {
-        // 构造箱体名称与 ID 映射表
-        const boxNames = await this.boxNameField!.getOptions();
-        boxNames.forEach(option => {
-            const ids: string[] = [];
-            this.recordIdsToGroupMap.set(option.name, ids);
-        });
+        console.time("initKeyMap");
 
-        // 获取所有记录的 ID对应的箱体类型
-        for (const recordId of this.mBitable!.recordIds) {
-            const boxName = (await this.boxNameField!.getValue(recordId)).text;
-            this.recordIdsToGroupMap.get(boxName)?.push(recordId);
+        // 获取箱体名称的选项
+        const boxNames = await this.boxNameField!.getOptions();
+
+        // 清空原有的映射
+        this.recordIdsToGroupMap.clear();
+
+        // 使用 reduce 来构建映射
+        this.recordIdsToGroupMap = boxNames.reduce((map, option) => {
+            map.set(option.name, []);
+            return map;
+        }, new Map<string, string[]>());
+
+        // 记录 ID 的数组和获取 box name 的所有 Promise
+        const boxNamePromises = this.mBitable!.recordIds.map(recordId => this.boxNameField!.getValue(recordId));
+
+        // 批量获取所有 box name 的值
+        const boxNameResults = await Promise.all(boxNamePromises);
+
+        // 将结果填充到 map 中
+        for (let i = 0; i < this.mBitable!.recordIds.length; i++) {
+            const boxName = boxNameResults[i].text; // 取出对应的 boxName
+            this.recordIdsToGroupMap.get(boxName)?.push(this.mBitable!.recordIds[i]);
         }
+
+        console.timeEnd("initKeyMap");
     }
 
     async exportRecordsToGroup(group_ids: string[] = []) {
         let fileNameNum = -1;
         const group: RowData[] = [];
 
+        const getValueText = (value: any) => (value ? value[0].text : "");
+
         for (const rowId of group_ids) {
-            const boxSortNum = await this.boxSortNumField!.getValue(rowId);
-            const boxName = (await this.boxNameField!.getValue(rowId)).text;
-            const boxNum = await this.boxNumField!.getValue(rowId);
-            const materialCode = (await this.materialCodeField!.getValue(rowId))
-                ? (await this.materialCodeField!.getValue(rowId))[0].text
-                : "";
-            const materialAttributes = (await this.materialAttributes!.getValue(rowId))
-                ? (await this.materialAttributes!.getValue(rowId))[0].text
-                : "";
-            const subdivision = (await this.subdivisionField!.getValue(rowId))
-                ? (await this.subdivisionField!.getValue(rowId))[0].text
-                : "";
-            const MaterialQuantity = await this.MaterialQuantity!.getValue(rowId);
-            const procurementTotal = await this.procurementTotal!.getValue(rowId);
-            const materialDimensional = (await this.materialDimensional!.getValue(rowId))
-                ? (await this.materialDimensional!.getValue(rowId))[0].text
-                : "";
+            // 批量获取字段的值
+            const [
+                boxSortNum,
+                boxName,
+                boxNum,
+                materialCode,
+                materialAttributes,
+                subdivision,
+                MaterialQuantity,
+                procurementTotal,
+                materialDimensional,
+            ] = await Promise.all([
+                this.boxSortNumField!.getValue(rowId),
+                this.boxNameField!.getValue(rowId),
+                this.boxNumField!.getValue(rowId),
+                this.materialCodeField!.getValue(rowId),
+                this.materialAttributes!.getValue(rowId),
+                this.subdivisionField!.getValue(rowId),
+                this.MaterialQuantity!.getValue(rowId),
+                this.procurementTotal!.getValue(rowId),
+                this.materialDimensional!.getValue(rowId),
+            ]);
 
             // 构建行对象
-            const row = {
-                箱体名称: String(boxName),
+            const row: RowData = {
+                箱体名称: String(boxName.text),
                 箱体序号: Number(boxSortNum),
                 箱体数量: Number(boxNum),
-                存货编码: String(materialCode),
-                物料属性: String(materialAttributes),
-                小类: String(subdivision),
-                单件箱体设计用量: Number(MaterialQuantity),
-                采购总量: Number(procurementTotal),
-                设计量纲: String(materialDimensional),
+                存货编码: String(getValueText(materialCode)),
+                物料属性: String(getValueText(materialAttributes)),
+                小类: String(getValueText(subdivision)),
+                单件箱体设计用量: Number(MaterialQuantity) || 0,
+                采购总量: Number(procurementTotal) || 0,
+                设计量纲: String(getValueText(materialDimensional)),
             };
 
             fileNameNum = boxSortNum;
@@ -145,41 +168,45 @@ export class MExportBOM {
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
 
-        // 生成 Excel 文件的二进制数据（ArrayBuffer）
-        const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-
-        // 将 ArrayBuffer 转换为 Blob
-        const blob = new Blob([excelBuffer], {
-            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        });
+        // 直接生成 Excel 文件的 Blob
+        const blob = new Blob(
+            [
+                XLSX.write(wb, {
+                    bookType: "xlsx",
+                    type: "array",
+                }),
+            ],
+            {
+                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            }
+        );
 
         return blob;
     }
 
     async exportRecordsToZip(onProgress: (current: number, total: number) => void) {
-        const zip = new JSZip(); // 创建一个新的 ZIP 对象
+        console.time("exportRecordsToZip");
 
+        const zip = new JSZip(); // 创建一个新的 ZIP 对象
+        let currentTotalFileNum = 0; // 用于计算当前进度
+
+        // 计算有效的组的数量
+        const validGroupCount = [...this.recordIdsToGroupMap.values()].filter(group_ids => group_ids.length > 0).length;
+
+        // 开始导出数据
         await Promise.all(
             Array.from(this.recordIdsToGroupMap.entries()).map(async ([_key, group_ids]) => {
-                // 计算当前组的总文件数
-                if (group_ids.length !== 0) this.totalFileNum++;
-
                 // 导出当前组的数据到各个分组的 Excel 文件中
                 const { group, fileNameNum } = await this.exportRecordsToGroup(group_ids);
 
-                // 仅当当前组内有数据时才生成 Excel 文件并添加到 ZIP 文件中
+                // 分组有数据时生成 Excel 文件并添加到 ZIP 文件中
                 if (group.length > 0) {
-                    // 计算当前文件序号
-                    this.fileCurrentNum++;
-
-                    // 生成 Excel 文件的 Blob
+                    currentTotalFileNum++;
                     const blob = this.exportRecordsToXlsx(group);
+                    zip.file(`data${Number(fileNameNum)}.xlsx`, blob);
 
                     // 使用回调函数发射进度
-                    onProgress(this.fileCurrentNum, this.totalFileNum);
-
-                    // 将 Blob 添加到 ZIP 文件中
-                    zip.file(`data${Number(fileNameNum)}.xlsx`, blob);
+                    onProgress(currentTotalFileNum, validGroupCount); // 使用有效组的数量
                 }
             })
         );
@@ -187,5 +214,7 @@ export class MExportBOM {
         // 生成压缩包并下载
         const content = await zip.generateAsync({ type: "blob" });
         saveAs(content, "制造BOM.zip");
+
+        console.timeEnd("exportRecordsToZip");
     }
 }

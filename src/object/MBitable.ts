@@ -100,21 +100,20 @@ export class MBitable {
         // 使用 Set 来存储所有的 totalRecordIds
         const parentRecordIdsSet = new Set<string>(this._totalRecordIds);
 
-        // 将所有的异步操作包装成一个数组
-        const childRecordPromises = this._totalRecordIds.map(async recordId => {
-            const childRecordIds = await this.getChildRecordIdsByName(recordId);
-            if (childRecordIds) {
-                childRecordIds.forEach(id => childRecordIdsSet.add(id));
-            }
-        });
+        // 获取所有 childRecordIds
+        const childRecordPromises = this._totalRecordIds.map(recordId =>
+            this.getChildRecordIdsByName(recordId).then(childRecordIds => {
+                if (childRecordIds) {
+                    childRecordIds.forEach(id => childRecordIdsSet.add(id));
+                }
+            })
+        );
 
         // 等待所有的异步操作完成
         await Promise.all(childRecordPromises);
 
         // 计算 parentRecordIds
-        this._parentRecordIds = Array.from(parentRecordIdsSet).filter(
-            element => !childRecordIdsSet.has(element as string)
-        ) as string[];
+        this._parentRecordIds = Array.from(parentRecordIdsSet).filter(element => !childRecordIdsSet.has(element));
 
         console.timeEnd("MBitable filterRecordIds");
     };
