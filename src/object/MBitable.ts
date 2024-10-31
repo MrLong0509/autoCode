@@ -29,6 +29,7 @@ export class MBitable {
         console.time("MBitable getTotalRecordIds");
         const result = await this.getTotalRecordIds();
         console.timeEnd("MBitable getTotalRecordIds");
+
         if (result) {
             this._totalRecordIds = result;
             await this.filterRecordIds();
@@ -97,6 +98,7 @@ export class MBitable {
 
         // 使用 Set 来存储所有的 childRecordIds，避免重复
         const childRecordIdsSet = new Set<string>();
+
         // 使用 Set 来存储所有的 totalRecordIds
         const parentRecordIdsSet = new Set<string>(this._totalRecordIds);
 
@@ -121,6 +123,7 @@ export class MBitable {
     // 使用通用方法获取总记录 ID
     getTotalRecordIds = async () => {
         if (!this._view) return [];
+
         const getVisibleRecordIdListByPage = this._view.getVisibleRecordIdListByPage.bind(this._view);
 
         return this.fetchRecordIdsByPageFunc(params => getVisibleRecordIdListByPage(params));
@@ -129,6 +132,7 @@ export class MBitable {
     // 使用通用方法获取子记录 ID
     getChildRecordIdsByName = async (parentId: string) => {
         if (!this._view) return [];
+
         const getChildRecordIdListByPage = this._view.getChildRecordIdListByPage.bind(this._view);
 
         return this.fetchRecordIdsByPageFunc(params =>
@@ -139,12 +143,15 @@ export class MBitable {
     //获取选中记录ID
     getSelectedRecordIds = async () => {
         if (!this._view) return;
+
         const selectedRecordIds = await this._view.getSelectedRecordIdList();
+
         return selectedRecordIds;
     };
 
     getFields = async () => {
         if (!this._table) return;
+
         return await this._table.getFieldList();
     };
 
