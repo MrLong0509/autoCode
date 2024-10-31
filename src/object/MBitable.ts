@@ -10,6 +10,8 @@ import {
     INumberField,
     IFormulaField,
     ILookupField,
+    IFieldMessageModule,
+    IFieldApplicationModule,
 } from "@lark-base-open/js-sdk";
 
 const MAX_RECORD_COUNT = 200;
@@ -25,6 +27,20 @@ export class MBitable {
     initialize = async () => {
         this._table = await bitable.base.getActiveTable();
         this._view = (await this._table.getActiveView()) as IGridView;
+
+        console.time("MBitable getTotalRecordIds");
+        const result = await this.getTotalRecordIds();
+        console.timeEnd("MBitable getTotalRecordIds");
+
+        if (result) {
+            this._totalRecordIds = result;
+            await this.filterRecordIds();
+        }
+    };
+
+    initializeByTableIdAndViewId = async (tableId: string, viewId: string) => {
+        this._table = await bitable.base.getTableById(tableId);
+        this._view = (await this._table.getViewById(viewId)) as IGridView;
 
         console.time("MBitable getTotalRecordIds");
         const result = await this.getTotalRecordIds();
@@ -155,29 +171,19 @@ export class MBitable {
         return await this._table.getFieldList();
     };
 
-    getTextFieldByName = async (name: string) => {
-        if (this._table) return await this._table.getField<ITextField>(name);
+    // 获取字段信息通用方法
+    getFieldByName = async <T extends IFieldMessageModule & IFieldApplicationModule<any, any, any>>(name: string) => {
+        if (this._table) {
+            return await this._table.getField<T>(name);
+        }
+        return undefined; // 或根据需要返回 null
     };
-
-    getSingleLinkFieldByName = async (name: string) => {
-        if (this._table) return await this._table.getField<ISingleLinkField>(name);
-    };
-
-    getSingleSelectFieldByName = async (name: string) => {
-        if (this._table) return await this._table.getField<ISingleSelectField>(name);
-    };
-
-    getNumberFieldByName = async (name: string) => {
-        if (this._table) return await this._table.getField<INumberField>(name);
-    };
-
-    getFormulaFieldbyName = async (name: string) => {
-        if (this._table) return await this._table.getField<IFormulaField>(name);
-    };
-
-    getLookupFieldbyName = async (name: string) => {
-        if (this._table) return await this._table.getField<ILookupField>(name);
-    };
+    getTextFieldByName = (name: string) => this.getFieldByName<ITextField>(name);
+    getSingleLinkFieldByName = (name: string) => this.getFieldByName<ISingleLinkField>(name);
+    getSingleSelectFieldByName = (name: string) => this.getFieldByName<ISingleSelectField>(name);
+    getNumberFieldByName = (name: string) => this.getFieldByName<INumberField>(name);
+    getFormulaFieldByName = (name: string) => this.getFieldByName<IFormulaField>(name);
+    getLookupFieldByName = (name: string) => this.getFieldByName<ILookupField>(name);
 
     setRecordsToBitable = async (records: IRecord[] = []) => {
         console.time("MBitable setRecordsToBitable");

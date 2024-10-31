@@ -60,7 +60,7 @@ export class MExportBOM {
 
     async initBitable() {
         this.mBitable = new MBitable();
-        await this.mBitable.initialize();
+        await this.mBitable.initializeByTableIdAndViewId("tblJ6DVNyWUEDmCd", "vewBidE40k");
     }
 
     async initFields() {
