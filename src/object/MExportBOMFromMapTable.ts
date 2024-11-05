@@ -2,7 +2,6 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { MBitable } from "./MBitable";
 import { INumberField, IOpenSegment, IOpenSingleSelect, ISingleSelectField, ITextField } from "@lark-base-open/js-sdk";
-import { el } from "element-plus/es/locales.mjs";
 
 interface simpleRowData {
     存货编码: string;
