@@ -25,7 +25,7 @@ export class MExportBOM {
     private materialCodeField: ITextField | undefined = undefined;
     private materialAttributes: ITextField | undefined = undefined;
     private subdivisionField: ITextField | undefined = undefined;
-    private MaterialQuantity: INumberField | undefined = undefined;
+    private materialQuantity: INumberField | undefined = undefined;
     private procurementTotal: INumberField | undefined = undefined;
     private materialDimensional: ITextField | undefined = undefined;
 
@@ -45,7 +45,7 @@ export class MExportBOM {
             !this.materialCodeField ||
             !this.materialAttributes ||
             !this.subdivisionField ||
-            !this.MaterialQuantity ||
+            !this.materialQuantity ||
             !this.procurementTotal ||
             !this.materialDimensional
         )
@@ -75,7 +75,7 @@ export class MExportBOM {
         this.materialCodeField = await this.mBitable.getTextFieldByName("存货编码");
         this.materialAttributes = await this.mBitable.getTextFieldByName("物料属性（拼接）");
         this.subdivisionField = await this.mBitable.getTextFieldByName("小类");
-        this.MaterialQuantity = await this.mBitable.getNumberFieldByName("单件箱体设计用量");
+        this.materialQuantity = await this.mBitable.getNumberFieldByName("单件箱体设计用量");
         this.procurementTotal = await this.mBitable.getNumberFieldByName("采购总量");
         this.materialDimensional = await this.mBitable.getTextFieldByName("设计量纲");
 
@@ -127,7 +127,7 @@ export class MExportBOM {
                 materialCode,
                 materialAttributes,
                 subdivision,
-                MaterialQuantity,
+                materialQuantity,
                 procurementTotal,
                 materialDimensional,
             ] = await Promise.all([
@@ -137,7 +137,7 @@ export class MExportBOM {
                 this.materialCodeField!.getValue(rowId),
                 this.materialAttributes!.getValue(rowId),
                 this.subdivisionField!.getValue(rowId),
-                this.MaterialQuantity!.getValue(rowId),
+                this.materialQuantity!.getValue(rowId),
                 this.procurementTotal!.getValue(rowId),
                 this.materialDimensional!.getValue(rowId),
             ]);
@@ -150,7 +150,7 @@ export class MExportBOM {
                 存货编码: String(getValueText(materialCode)),
                 物料属性: String(getValueText(materialAttributes)),
                 小类: String(getValueText(subdivision)),
-                单件箱体设计用量: Number(MaterialQuantity) || 0,
+                单件箱体设计用量: Number(materialQuantity) || 0,
                 采购总量: Number(procurementTotal) || 0,
                 设计量纲: String(getValueText(materialDimensional)),
             };
